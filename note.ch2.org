@@ -1,0 +1,170 @@
+#+SETUPFILE: https://fniessen.github.io/org-html-themes/setup/theme-readtheorg.setup
+#+OPTIONS: ^:nil
+#+MACRO: imglnk @@html:<a href="$1"><img src="$2"></a>@@
+#+TITLE: joy-of-clojure note
+
+* 인용과 문법인용 차이 확인
+- 인용
+  - qoute 특수 연산자를 사용하거나 ='= 심벌을 앞에 붙여 표현함. 
+- 문법 인용
+  - =`= 심벌을  앞에 붙여 표현함.
+
+#+begin_src clojure :results silent
+(ns quote)
+(def age 9)
+(quote age) ; => age
+'(age) ; => age
+`(age) ; => quote/age
+(let [] 'age) ; => age
+(let [] `age) ; => => quote/age
+
+'(1 2 3) ; => (1 2 3)
+`(1 2 3) ; => (1 2 3)
+
+(let [x '(2 3)] '(1 ~x)) ; => (1 (clojure.core/unquote x))
+(let [x '(2 3)] `(1 ~x)) ; => (1 (2 3))
+(let [x `(2 3)] '(1 ~x)) ; => (1 (clojure.core/unquote x))
+(let [x `(2 3)] `(1 ~x)) ; => (1 (2 3))
+
+(let [x 'age] '(1 ~x)) ; => (1 (clojure.core/unquote x))
+(let [x 'age] `(1 ~x)) ; => (1 age)
+(let [x `age] '(1 ~x)) ; => (1 (clojure.core/unquote x))
+(let [x `age] `(1 ~x)) ; => (1 quote/age)
+
+(let [] `map) ; => clojure.core/map
+(let [] 'map) ; => map
+(let [] `Integer) ; => java.lang.Integer
+(let [] 'Integer) ; => Integer
+#+end_src
+
+* 평가 이음 기호
+
+#+begin_src clojure :results silent
+(let [x '(2 3)] `(1 ~x)) ; => (1 (2 3))
+(let [x '(2 3)] `(1 ~@x)) ; => (1 2 3)
+#+end_src
+
+* 인스턴스 생성
+- 클래스명 다음에 =.= 을 찍으면 생성자 호출을 의미.
+#+begin_src clojure :results silent
+(ns create_instance)
+
+(new java.awt.Point 0 1) ; => #object[java.awt.Point 0x2321dcb8 "java.awt.Point[x=0,y=1]"]
+
+(new java.util.HashMap { "foo" 42 "bar" 9 "baz" "quux"}) ; => {"bar" 9, "baz" "quux", "foo" 42}
+
+(java.util.HashMap. { "foo" 42 "bar" 9 "baz" "quux"}) ; => {"bar" 9, "baz" "quux", "foo" 42}
+#+end_src
+
+#+begin_src clojurescript :results silent
+(ns ch2.instance-js)
+(js/Date.) ; => #inst "2024-12-28T23:16:08.909-00:00"
+#+end_src
+
+* 점(.) 연산자로 인스턴스 멤버 접근
+#+begin_src clojure :results silent
+;; 인스턴스 멤버변수 앞에 '.-' 를 붙여 멤버변수 조회. Point 인스턴스 생성 후 x 값 조회 
+(.-x (java.awt.Point. 10 20)) ; => 10
+
+;; 인스턴스 메소드 앞에 '.'을 붙여 메소드 실행. BigDecimal 42를 2로 나눈 결과 조회 
+(.divide (java.math.BigDecimal. "42") 2M) ; => 21M
+#+end_src
+
+* .. 매크로
+#+begin_src clojure :results silent
+(.toString (java.util.Date.)) ; => "Sun Dec 29 08:59:56 KST 2024"
+
+;; .. 매크로를 사용하여 자바 코드와 유사한 방식으로 메소드 호출이 가능.
+(.endsWith (.toString (java.util.Date.)) "2024") ; => true
+(.. (java.util.Date.) toString (endsWith "2024")) ; => true
+#+end_src
+
+* doto 매크로
+#+begin_src clojure :results silent
+;; 자바 코드는 매소드 호출 시 인스턴스가 계속 앞에 붙어 코드가 장황해짐.
+;; java.util.HashMap props = new java.util.HashMap();
+;; props.put("HOME", "/home/me");
+;; props.put("SRC", "src");
+;; props.put("BIN", "classes");
+
+(doto (java.util.HashMap.)
+  (.put "HOME" "/home/me")
+  (.put "SRC" "src")
+  (.put "BIN" "classes")) ; => {"SRC" "src", "BIN" "classes", "HOME" "/home/me"}
+#+end_src
+
+* 예외 발생과 처리 
+#+begin_src clojure :results silent
+(throw (Exception. "I done throwed")) ; => Exception I done throwed
+
+(defn throw-catch [f]
+  [(try
+     (f)
+     (catch ArithmeticException e "No dividing by zero!")
+     (catch Exception e (str "You are so bad " (.getMessage e)))
+     (finally (println "returnning... ")))])
+
+(throw-catch #(/ 10 5)) ; => [2]
+(throw-catch #(/ 10 0)) ; => ["No dividing by zero!"]
+(throw-catch #(throw (Exception. "Crybaby"))) ; => ["You are so bad Crybaby"]
+#+end_src
+
+#+begin_src clojurescript :results silent
+(ns ch2.exception-js)
+(try
+  (throw (js/Error. "I done throwed in CLJS"))
+  (catch js/Error err "I done throwed in CLJS")) ; => "I done throwed in CLJS"
+#+end_src
+
+* 네임스페이스
+#+begin_src clojure
+(ns joy.ch2)
+(defn hello []
+  println "Heool Cleveland!") ; => #'joy.ch2/hello
+
+(defn report-ns []
+  (str "The current namespace is " *ns*)) ; => #'joy.ch2/report-ns
+
+(report-ns) ; => "The current namespace is joy.ch2"
+#+end_src
+* :require
+#+begin_src clojure :result silent
+(ns joy.req
+  (:require clojure.set))
+
+(clojure.set/intersection #{1 2 3} #{3 4 5}) ; => #{3}
+
+(ns joy.req-alias
+  (:require [clojure.set :as s]))
+
+(s/intersection #{1 2 3} #{3 4 5}) ; => #{3}
+#+end_src
+
+
+* :refer
+#+begin_src clojure :result silent
+; 특정 함수 참조 
+(ns joy.use-ex
+  (:require [clojure.string :refer (capitalize)]))
+(map capitalize ["kilore" "trout"]) ; => ("Kilore" "Trout")
+#+end_src
+
+#+begin_src clojure :results silent
+; namespace 자체를 참조
+(ns joy.yet-another
+  (:refer joy.ch2))
+
+(report-ns) ; => "The current namespace is joy.yet-another"
+#+end_src
+
+* :import
+#+begin_src clojure :results silent
+(ns joy.java
+  (:import [java.util HashMap]
+           [java.util.concurrent.atomic AtomicLong]))
+
+(HashMap. {"happy?" true}) ; => {"happy?" true}
+
+(AtomicLong. 42) ; => 42
+#+end_src
+

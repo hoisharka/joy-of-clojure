@@ -1,0 +1,6 @@
+node_modules
+.nrepl-port
+.lsp
+.clj-kondo
+.shadow-cljs
+target
