@@ -1,0 +1,228 @@
+#+SETUPFILE: https://fniessen.github.io/org-html-themes/setup/theme-readtheorg.setup
+#+OPTIONS: ^:nil
+#+MACRO: imglnk @@html:<a href="$1"><img src="$2"></a>@@
+#+TITLE: joy-of-clojure chapert3 note
+
+* 참
+#+begin_src clojure :results silent
+;; false 와 nil을 제외하면 모두 참으로 판단.
+;; truthy
+(if true :truthy :falsey)
+(if [] :truthy :falsey)
+
+;; falsey
+(if nil :truthy :falsey)
+(if false :truthy :falsey)
+#+end_src
+
+* Boolean 문자열 파싱 시 주의 
+#+begin_src clojure :results silent
+;; bad 
+(def evil-false (Boolean. "false"))
+#{evil-false} ; => #{false}
+(= false evil-false) ; => true
+
+; :falsey여야할 거 같지만 :thruthy
+(if evil-false :truthy :falsey) ; => :truthy
+
+;; good
+(if (Boolean/valueOf "false") :truthy :falsey) ; => :falsey
+#+end_src
+
+* nil
+seq 함수는 컬렉션의 시퀀스를 리턴. 컬렉션이 비어있으면 nil을 리턴.
+#+begin_src clojure :results silent
+(seq [1 2 3]) ; => (1 2 3)
+(seq []) ; => nil
+#+end_src
+
+* nil을 종료 조건으로 사용
+#+begin_src clojure :results silent
+(defn print-seq [s]
+  (when (seq s) ; seq를 종료 조건으로 사용하여 시퀀스가 비어있는지 확인 
+    (prn (first s))
+    (recur (rest s)))) ; 
+
+(print-seq []) ; => nil
+(print-seq [1 2]) 
+; 1
+; 2
+; => nil 
+#+end_src
+
+* 구조분해 
+#+begin_src clojure :results silent
+(def guys-whole-name ["Guy" "Lewis" "Steele"])
+
+;; 중복이 많은 코드 
+(str (nth guys-whole-name 2) ", "
+     (nth guys-whole-name 0) " "
+     (nth guys-whole-name 1)) ; => "Steele, Guy Lewis"
+
+;; 구조분해를 사용해 중복을 줄인 코드 
+(let [[f-name m-name l-name] guys-whole-name]
+  (str l-name ", " f-name " " m-name)) ; => "Steele, Guy Lewis"
+#+end_src
+
+* & 바인딩 
+#+begin_src clojure :results silent
+(let [[a b c & more] (range 10)]
+  (println "a b c are:" a b c)
+  (println "more is:" more))
+; a b c are: 0 1 2
+; more is: (3 4 5 6 7 8 9)
+; => nil
+
+(let [range-vec (vec (range 10))
+      [a b c & more :as all] range-vec]
+  (println "a b c are:" a b c)
+  (println "more is:" more)
+  (println "all is:" all))
+; a b c are: 0 1 2
+; more is: (3 4 5 6 7 8 9)
+; all is: [0 1 2 3 4 5 6 7 8 9]
+; => nil
+#+end_src
+
+* map 구조분해 
+#+begin_src clojure :results silent
+(def guys-name-map
+  {:f-name "Guy" :m-name "Lewis" :l-name "Steele"})
+
+(let [{f-name :f-name, m-name :m-name, l-name :l-name} guys-name-map]
+  (str l-name ", " f-name " " m-name)) ; => "Steele, Guy Lewis"
+
+;; keys 사용 
+(let [{:keys [f-name m-name l-name]} guys-name-map]
+  (str l-name ", " f-name " " m-name)) ; => "Steele, Guy Lewis"
+
+;; :as로 전체 
+(let [{f-name :f-name, :as whole-name} guys-name-map]
+  (println "First name is" f-name)
+  (println "Whole name is below:")
+  whole-name)
+; First name is Guy
+; Whole name is below:
+; => {:f-name "Guy", :m-name "Lewis", :l-name "Steele"}
+
+;; :or로 기본값 부여
+(let [{:keys [title f-name m-name l-name],
+       :or {title "Mr."}} guys-name-map]
+  (println title f-name m-name l-name))
+; Mr. Guy Lewis Steele
+; => nil
+
+;; 맵 구조분해의 특징은 리스트에도 적용 가능.
+(defn whole-name [& args]
+  (let [{:keys [f-name m-name l-name]} args]
+    (str l-name ", " f-name " " m-name)))
+
+(whole-name :f-name "Guy" :m-name "Lewis" :l-name "Steele")
+; => "Steele, Guy Lewis"
+#+end_src
+
+* 연관구조분해
+#+begin_src clojure :results silent
+(let [{first-thing 0, last-thing 3} [1 2 3 4]]
+  [first-thing last-thing]) ; => [1 4]
+
+;; 함수인자에서의 구조분해
+(defn print-last-name [{:keys [l-name]}]
+  (println l-name))
+
+(print-last-name guys-name-map)
+; Steele
+; => nil
+#+end_src
+
+* xors 함수 생서 과정 
+#+begin_src clojure :results silent
+(range 5) 
+; => (0 1 2 3 4)
+
+(for [x (range 2) y (range 2)] [x y])
+; => ([0 0] [0 1] [1 0] [1 1])
+
+(find-doc "xor")
+; bit-xor
+; ([x y] [x y & more])
+;   Bitwise exclusive or
+; => nil
+
+(bit-xor 1 2)
+; => 3
+
+(for [x (range 2) y (range 2)]
+  [x y (bit-xor x y)])
+; => ([0 0 0] [0 1 1] [1 0 1] [1 1 0])
+
+(xors 2 2)
+; => ([0 0 0] [0 1 1] [1 0 1] [1 1 0])
+#+end_src
+
+* bit-xor의 시각적 표현
+#+begin_src clojure :results silent 
+(defn xors [xs ys]
+  (for [x (range xs) y (range ys)]
+    [x y (bit-xor x y)]))
+
+(def frame (java.awt.Frame.))
+
+(for [meth (.getMethods java.awt.Frame)
+      :let [name (.getName meth)]
+      :when (re-find #"Vis" name)]
+  name)
+; => ("setVisible" "isVisible")
+
+(.setVisible frame true)
+(.setSize frame (java.awt.Dimension. 200 200))
+
+;; 그래픽 컨텍스트 불러오기
+(def gfx (.getGraphics frame))
+
+;; 직사각형 그리기 
+(.fillRect gfx 100 100 50 75)
+
+;; 직사각형 그리기. 색상 설정.
+(.setColor gfx (java.awt.Color. 255 128 0))
+(.fillRect gfx 100 100 50 75)
+
+(doseq [[x y xor] (xors 200 200)]
+ (.setColor gfx (java.awt.Color. xor xor xor))
+ (.fillRect gfx x y 1 1))
+
+
+;; 500x500으로 그리기 
+
+;; rem 으로 256으로 나눈 나머지 값 사용. 
+;; x, y범위를 0~255로 제한하여 컬러 세팅 시 오류를 방지 
+(defn xors [xs ys]
+  (for [x (range xs) y (range ys)]
+    [x y (rem (bit-xor x y) 256)]))
+
+(defn clear [g] (.clearRect g 0 0 200 200))
+(clear gfx)
+(doseq [[x y xor] (xors 500 500)]
+ (.setColor gfx (java.awt.Color. xor xor xor))
+ (.fillRect gfx x y 1 1))
+#+end_src
+
+* xors 확장 
+#+begin_src clojure :results silent
+(defn f-values [f xs ys]
+  (for [x (range xs) y (range ys)]
+    [x y (rem (f x y) 256)]))
+
+(defn draw-values [f xs ys]
+  (clear gfx)
+  (.setSize frame (java.awt.Dimension. xs ys))
+  (doseq [[x y v] (f-values f xs ys)]
+    (.setColor gfx (java.awt.Color. v v v))
+    (.fillRect gfx x y 1 1)))
+
+(draw-values bit-and 256 256)
+(draw-values + 256 256)
+(draw-values * 256 256)
+#+end_src
+
+
