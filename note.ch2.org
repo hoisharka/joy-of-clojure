@@ -1,7 +1,7 @@
 #+SETUPFILE: https://fniessen.github.io/org-html-themes/setup/theme-readtheorg.setup
 #+OPTIONS: ^:nil
 #+MACRO: imglnk @@html:<a href="$1"><img src="$2"></a>@@
-#+TITLE: joy-of-clojure note
+#+TITLE: joy-of-clojure note chapert2 note
 
 * 인용과 문법인용 차이 확인
 - 인용

@@ -1,7 +1,7 @@
 #+SETUPFILE: https://fniessen.github.io/org-html-themes/setup/theme-readtheorg.setup
 #+OPTIONS: ^:nil
 #+MACRO: imglnk @@html:<a href="$1"><img src="$2"></a>@@
-#+TITLE: joy-of-clojure chapert3 note
+#+TITLE: joy-of-clojure chapert4 note
 
 * 절삭
 
