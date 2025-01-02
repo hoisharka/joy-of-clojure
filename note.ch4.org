@@ -1,0 +1,281 @@
+#+SETUPFILE: https://fniessen.github.io/org-html-themes/setup/theme-readtheorg.setup
+#+OPTIONS: ^:nil
+#+MACRO: imglnk @@html:<a href="$1"><img src="$2"></a>@@
+#+TITLE: joy-of-clojure chapert3 note
+
+* 절삭
+
+#+begin_src clojure :results silent
+;; M리터럴로 정밀도 높이기 
+(let [imadeuapi 3.14159265358979323846264338327950288419716939937M]
+  (println (class imadeuapi))
+  imadeuapi) 
+; java.math.BigDecimal
+; => 3.14159265358979323846264338327950288419716939937M
+
+;; M리터럴 제거 시 Double로 인지 
+(let [butieatedit 3.14159265358979323846264338327950288419716939937]
+  (println (class butieatedit))
+  butieatedit) 
+; java.lang.Double
+; => 3.141592653589793
+#+end_src
+
+* 승급
+
+#+begin_src clojure :results silent
+(def clueless 9)
+
+(class clueless)
+; => java.lang.Long
+(class (+ clueless 9000000000000000))
+; => java.lang.Long
+(class (+ clueless 90000000000000000000))
+; => clojure.lang.BigInt
+(class (+ clueless 9.0))
+; => java.lang.Double
+#+end_src
+
+* 오버플로우
+#+begin_src clojure :results silent
+;; 오버플로우가 일어날 경우 에러를 발생시킴.
+(+ Long/MAX_VALUE Long/MAX_VALUE)
+; => "class java.lang.ArithmeticException"
+
+;; 오버플로우가 필요한 상황에서 사용하는 용도.
+(unchecked-add (Long/MAX_VALUE) (Long/MAX_VALUE))
+; => -2
+#+end_src
+
+* 언더플로우
+너무 작은 경우 0이 되어버림.
+#+begin_src clojure :results silent
+(float 0.000000000000000000000000000000000000000000000000000001) 
+; => 0.0
+ 
+1.0E-430
+; => 0.0
+#+end_src
+
+* 반올림 오류 
+#+begin_src clojure :results silent
+(let [approx-interval (/ 209715 2097152)
+      actual-interval (/ 1 10)
+      hours (* 3600 100 10)
+      actual-total (double (* hours actual-interval))
+      approx-total (double (* hours approx-interval))]
+  (- actual-total approx-total))
+; => 0.34332275390625
+
+;; 클로저에서 반올림 오류 발생시키는 방법
+;; double, float이 포함되면 
+(+ 0.1M 0.1M 0.1M 0.1M 0.1M 0.1M 0.1M 0.1M 0.1M 0.1M)
+; => 1.0M
+(+ 0.1 0.1M 0.1M 0.1M 0.1M 0.1M 0.1M 0.1M 0.1M 0.1M)
+; => 0.9999999999999999
+(+ (double 0.1) 0.1M 0.1M 0.1M 0.1M 0.1M 0.1M 0.1M 0.1M 0.1M)
+; => 0.9999999999999999
+(+ (float 0.1) 0.1M 0.1M 0.1M 0.1M 0.1M 0.1M 0.1M 0.1M 0.1M)
+; => 1.000000001490116
+#+end_src
+
+* 유리수를 사용해야하는 이유 
+부동소수점 계산보단 유리수 계산이 권장된다.
+부동소수점 계산의 경우 반올림이 포함되어 잠재적인 오류가 존재한다.
+또한 결합/분배 법칙 또한 성립하지 않는다.
+#+begin_src clojure :results silent
+(def a 1.0e50)
+(def b -1.0e50)
+(def c 17.0e00)
+
+;; 결합법칠이 성립하지 않는 예시 
+(+ (+ a b) c)
+; => 17.0
+(+ a (+ b c))
+; => 0.0
+#+end_src
+
+* 유리수 만들기 
+#+begin_src clojure :results silent
+(def a (rationalize 1.0e50))
+(def b (rationalize -1.0e50))
+(def c (rationalize 17.0e00))
+
+;; rationalize로 부동소수점 오류 해결 
+(+ (+ a b) c)
+; => 17N
+(+ a (+ b c))
+; => 17N
+#+end_src
+
+
+- BigDecimal을 리턴하고 있지 않거나 의심스러운 부분만 있어도 절대 수학
+  연산에 자바 라이브러리를 사용하지 않는다.
+- 자바 float나 double 기본 타입의 값들을 rationalize하지 않는다. 
+- 아주 정확한 계산을 수행하는 코드를 작성하려면 유리수를 사용한다.
+- 부동 소수 표현으로의 변경은 마지막에만 사용한다. 
+
+#+begin_src clojure :results silent
+;; numerator 분자 추출 
+(numerator (/ 123 10))
+;; => 123
+
+;; denominator 분모 추출 
+(denominator (/ 123 10))
+;; => 10 
+#+end_src
+
+* 키워드의 용도
+#+begin_src clojure :results silent
+:a-keyword
+;; => :a-keyword
+::also-a-keyword
+;; => :shadow.user/also-a-keyword
+#+end_src
+
+* 키워드를 키로 활용
+#+begin_src clojure :results silent
+(def population {:zombies 2700, :humans 9})
+(get population :zombies)
+;; => 2700
+
+(println (/ (get population :zombies)
+            (get population :humans))
+         "zombies per capital")
+;; 300 zombies per capital
+;; => nil
+#+end_src
+
+* 함수로 활용
+#+begin_src clojure :results silent
+(:zombies population)
+;; => 2700
+
+(println (/ (:zombies population)
+            (:humans population))
+         "zombies per capital")
+;; 300 zombies per capital
+#+end_src
+
+* 열거형/멀티메서드의 디스패치 값으로 활용.
+:small :medium :large 와 같은 식으로 열거형 값으로 사용.
+typescript의 enum과 비슷
+
+* 지시자로 활용
+#+begin_src clojure :results slient
+
+;; cond 는 각 구문의 else는 
+(find-doc cond)
+(defn pour [lb ub]
+  (cond
+    (= ub :toujours) (iterate inc lb) 
+    :else (range lb ub)))
+
+(pour 1 10)
+;; => (1 2 3 4 5 6 7 8 9)
+
+;; :toujours 를 지시자로 하여 기능을 분기.
+(pour 1 :toujours)
+;; => (1 2 3 4 5 6 7 8 9 10...
+#+end_src
+
+* 키워드 식별
+#+begin_src clojure :results silent
+;; :을 하나 더 붙여도 특정 ns에 속하지 않음.
+::not-in-ns
+;; =>:user/not-in-ns
+
+;; another ns로 변경해도 ns와 별개의 접두어를 가질 수 있음.
+(ns another)
+:user/in-another
+;; => :user/in-another
+#+end_src
+
+* 네임스페이스로 식별된 키워드 활용
+#+begin_src clojure :results silent
+(defn do-blowfish [directive]
+  (case directive
+    :aquarium/blowfish (println "feed the fish")
+    :crypto/blowfish (println "encode the message")
+    :blowfish (println "not sure what to do"))) 
+;; => #'shadow.user/do-blowfish
+
+(ns crypto)
+
+(shadow.user/do-blowfish :blowfish)
+;; not sure what to do
+;; => nil
+
+(shadow.user/do-blowfish ::blowfish)
+;; encode the message
+;; => nil
+
+(ns aquarium)
+(shadow.user/do-blowfish :blowfish)
+;; not sure what to do
+;; => nil
+
+(shadow.user/do-blowfish ::blowfish)
+;; feed the fish
+;; => nil
+
+#+end_src
+
+* 심벌
+#+begin_src clojure :results silent
+;; 이름이 같더라도 동일한 객체가 할 수 없다. 
+(identical? 'goat 'goat)
+;; => false
+
+;; = 으로 확인할 경우 이름으로 비교함.
+(= 'goat 'goat)
+;; => true
+
+(name 'goat)
+;; => "goat"
+
+;; x가 'goat를 참조 y가 x를 참조하므로 둘은 동일한 객체이다. 
+(let [x 'goat, y x]
+  (identical? x y))
+;; => true
+
+
+;; 같은 이름이 심벌에 with-meta를 통해 다른 메타데이터를 적용할 수 있음.
+;; 서로 다른 인스턴스로 보아야 한다. 
+(let [x (with-meta 'goat {:ornery true})
+      y (with-meta 'goat {:ornery false})]
+  [(= x y)
+   (identical? x y)
+   (meta x)
+   (meta y)])
+;; => [true false {:ornery true} {:ornery false}]
+#+end_src
+
+* 심벌과 네임스페이스 
+
+#+begin_src clojure :results silent
+(ns where-is)
+(def a-symbol 'where-am-i)
+
+a-symbol
+;; => where-am-i
+
+;; resolve 사용시 네임스페이스에 식별된 심벌을 리턴
+(resolve 'a-symbol)
+;; => #'where-is/a-symbol
+
+;; 문법인용 사용시에도 네임스페이스에 식별됨.
+`a-symbol
+;; => where-is/a-symbol
+#+end_src
+
+평가를 수행할 때 심벌이 식별되는 특성이 있다.
+
+* 정규 표현식 함수
+#+begin_src clojure :results silent
+(re-seq #"\w+" "one-tow/three")
+;; => ("one" "tow" "three")
+
+(re-seq #"\w*(\w)" "one-two/three")
+;; => (["one" "e"] ["two" "o"] ["three" "e"])
+#+end_src
